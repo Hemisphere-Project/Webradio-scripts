@@ -15,10 +15,10 @@ signal.signal(signal.SIGINT, signal_handler)
 
 class Flux:
 
-    def __init__(self, num):
+    def __init__(self, filepath):
         self.ff = ffmpy.FFmpeg(
             global_options= '-loglevel warning -fflags +genpts -stream_loop -1',
-            inputs={'temoin-novembre.wav': None},
+            inputs={filepath: None},
             outputs={'icecast://source:KXKMcast@radio.kxkm.net:5000/flux': '-c:a libmp3lame -b:a 92k -content_type audio/mpeg -f mp3'}
         )
         self.process = Thread(target=self.execute)
@@ -60,8 +60,8 @@ def kill_ffmpeg():
 
 # register flux
 fluxes = []
-def add_flux(num):
-    fluxes.append(Flux(num))
+def add_flux(filepath):
+    fluxes.append(Flux(filepath))
 
 def start():
     for f in fluxes:
@@ -76,8 +76,11 @@ def stop():
 # APP MAIN
 kill_ffmpeg()
 
-add_flux(0)
+if len(sys.argv) < 2:
+	print 'Missing file to cast.. Usage: ./bande-continue file.wav'
+	sys.exit(1)
 
+add_flux(sys.argv[1])
 start()
 
 while True:
