@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+import ffmpy
+import time
+from threading import Thread
+import signal
+import sys
+
+def signal_handler(signal, frame):
+        print('You pressed Ctrl+C!')
+        stop()
+        kill_ffmpeg()
+        sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
+
+class Flux:
+
+    def __init__(self, num):
+        self.ff = ffmpy.FFmpeg(
+            global_options= '-loglevel warning',
+            inputs={'http://radio.kxkm.net:5000/flux'+str(num): None},
+            outputs={'icecast://source:KXKMcast@radio.kxkm.net:5000/flux'+str(num)+'-mp3': '-c:a libmp3lame -b:a 92k -content_type audio/mpeg -f mp3'}
+        )
+        self.process = Thread(target=self.execute)
+        self.run = True
+
+
+    def execute(self):
+        self.retry = 0
+        while self.run:
+            if self.retry > 0:
+                time.sleep(2)
+            try:
+                self.ff.run()
+            except:
+                print 'Error'
+            self.retry += 1
+
+    def start(self):
+        self.process.start()
+
+    def stop(self):
+        self.run = False
+        try:
+            self.ff.process.terminate()
+        except:
+            pass
+
+
+# kill ffmpeg
+def kill_ffmpeg():
+    import psutil
+    PROCNAME = "ffmpeg"
+    for proc in psutil.process_iter():
+        # check whether the process name matches
+        if proc.name() == PROCNAME:
+            proc.kill()
+
+
+# register flux
+fluxes = []
+def add_flux(num):
+    fluxes.append(Flux(num))
+
+def start():
+    for f in fluxes:
+        f.start()
+
+def stop():
+    for f in fluxes:
+        f.stop()
+
+
+
+# APP MAIN
+kill_ffmpeg()
+
+add_flux(0)
+add_flux(1)
+add_flux(2)
+add_flux(3)
+
+start()
+
+while True:
+    time.sleep(10)
+
